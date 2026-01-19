@@ -11,10 +11,15 @@ interface Message {
     classification?: {
         label: string;
         confidence: number;
-        reason: string;
-        sources?: string[];
-        verdict?: string;
-        webEvidenceWeight?: number;
+        aiReasoning: string;
+        webSourcesSummary: string;
+        webSearchResults?: Array<{
+            title: string;
+            url: string;
+            snippet: string;
+            scrapedContent?: string | null;
+        }>;
+        webSearchStatus?: string;
     };
 }
 

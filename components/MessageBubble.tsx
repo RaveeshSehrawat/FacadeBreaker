@@ -6,10 +6,15 @@ interface MessageBubbleProps {
     classification?: {
         label: string;
         confidence: number;
-        reason: string;
-        sources?: string[];
-        verdict?: string;
-        webEvidenceWeight?: number;
+        aiReasoning: string;
+        webSourcesSummary: string;
+        webSearchResults?: Array<{
+            title: string;
+            url: string;
+            snippet: string;
+            scrapedContent?: string | null;
+        }>;
+        webSearchStatus?: string;
     };
 }
 
@@ -20,48 +25,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
     const isUser = role === "user";
 
-    const getVerdictColor = (verdict?: string) => {
-        const v = verdict?.toLowerCase();
-        switch (v) {
+    const getVerdictTone = (label?: string) => {
+        switch (label?.toLowerCase()) {
             case "fake":
-            case "false":
-            case "fraud":
-            case "contradicted by web sources":
-                return "text-red-600 dark:text-red-400";
-            case "real":
-            case "true":
-            case "verified":
-            case "verified by web sources":
-                return "text-green-600 dark:text-green-400";
-            case "uncertain":
-            case "unknown":
-            case "mixed":
-            case "partially verified":
-            case "insufficient web evidence":
-                return "text-yellow-600 dark:text-yellow-400";
-            default:
-                return "";
-        }
-    };
-
-    const getVerdictTone = (verdict?: string) => {
-        const v = verdict?.toLowerCase();
-        switch (v) {
-            case "fake":
-            case "false":
-            case "fraud":
-            case "contradicted by web sources":
                 return "bg-red-50 border-red-200 text-red-900 dark:bg-red-950/40 dark:border-red-700/70 dark:text-red-200";
             case "real":
-            case "true":
-            case "verified":
-            case "verified by web sources":
                 return "bg-green-50 border-green-200 text-green-900 dark:bg-green-950/40 dark:border-green-700/70 dark:text-green-200";
             case "uncertain":
-            case "unknown":
-            case "mixed":
-            case "partially verified":
-            case "insufficient web evidence":
                 return "bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-950/40 dark:border-yellow-700/70 dark:text-yellow-200";
             default:
                 return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-700";
@@ -92,57 +62,83 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <p className="whitespace-pre-wrap leading-relaxed">{content}</p>
 
                 {classification && (
-                    <div className={`mt-3 p-3 rounded border text-sm pulse-border ${getVerdictTone(classification.verdict)}`}>
-                        <div className="flex justify-between items-center mb-1 font-bold">
-                            <span className={`px-2 py-0.5 rounded-full text-xs ${getLabelColor(classification.label)}`}>
-                                {classification.label.toUpperCase()}
-                            </span>
-                            <span>{classification.confidence}%</span>
-                        </div>
-                        <p className="italic opacity-90">{classification.reason}</p>
-                        
-                        {classification.verdict && (
-                            <div className="mt-2 pt-2 border-t border-current/20">
-                                <p className="font-semibold text-xs">
-                                    Verdict: 
-                                    <span className={`ml-1 ${getVerdictColor(classification.verdict)}`}>
-                                        {classification.verdict}
+                    <div className="mt-2 space-y-2 text-xs">
+                        {/* AI Analysis Section */}
+                        <div className={`p-2 rounded border pulse-border ${getVerdictTone(classification.label)}`}>
+                            <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-1.5">
+                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 9a1 1 0 112 0v4a1 1 0 11-2 0V9zm1-5a1 1 0 100 2 1 1 0 000-2z" />
+                                    </svg>
+                                    <span className="font-semibold">AI Analysis</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${getLabelColor(classification.label)}`}>
+                                        {classification.label.toUpperCase()}
                                     </span>
-                                </p>
-                                {classification.webEvidenceWeight !== undefined && (
-                                    <div className="mt-1 space-y-1">
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span>Web Evidence Influence:</span>
-                                            <span className="font-semibold">{classification.webEvidenceWeight}%</span>
-                                        </div>
-                                        <div className="w-full bg-current/20 rounded-full h-1.5">
-                                            <div 
-                                                className="bg-current h-1.5 rounded-full transition-all duration-500" 
-                                                style={{ width: `${classification.webEvidenceWeight}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
+                                    <span className="font-semibold">{classification.confidence}%</span>
+                                </div>
+                            </div>
+                            <p className="opacity-90 leading-snug">{classification.aiReasoning}</p>
+                        </div>
+
+                        {/* Web Sources Summary */}
+                        {classification.webSourcesSummary && classification.webSourcesSummary !== "No web sources available" && (
+                            <div className="p-2 rounded border bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-950/40 dark:border-blue-700/70 dark:text-blue-200">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="font-semibold">What Web Sources Say</span>
+                                </div>
+                                <p className="opacity-90 leading-snug">{classification.webSourcesSummary}</p>
                             </div>
                         )}
-                        
-                        {classification.sources && classification.sources.length > 0 && (
-                            <div className="mt-2 pt-2 border-t border-current/20">
-                                <p className="font-semibold text-xs mb-1">Sources Used for Verification:</p>
-                                <ul className="text-xs space-y-1">
-                                    {classification.sources.map((source, idx) => (
-                                        <li key={idx} className="truncate">
+
+                        {/* Web Search Results Section */}
+                        {classification.webSearchResults && classification.webSearchResults.length > 0 && (
+                            <details className="p-2 rounded border bg-blue-50/50 border-blue-200 text-blue-900 dark:bg-blue-950/20 dark:border-blue-700/70 dark:text-blue-200">
+                                <summary className="cursor-pointer font-semibold flex items-center gap-1.5">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    View {classification.webSearchResults.length} Source{classification.webSearchResults.length > 1 ? 's' : ''}
+                                </summary>
+                                <div className="space-y-1.5 mt-2">
+                                    {classification.webSearchResults.map((result, idx) => (
+                                        <div key={idx} className="p-1.5 bg-white/50 dark:bg-gray-900/50 rounded border border-current/10">
                                             <a 
-                                                href={source} 
+                                                href={result.url} 
                                                 target="_blank" 
                                                 rel="noopener noreferrer"
-                                                className="underline hover:opacity-70 transition-opacity"
+                                                className="font-medium hover:underline block leading-tight"
                                             >
-                                                {source.substring(0, 50)}...
+                                                {result.title}
                                             </a>
-                                        </li>
+                                            <p className="opacity-75 mt-0.5 leading-snug">{result.snippet}</p>
+                                            <a 
+                                                href={result.url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-[10px] underline opacity-50 hover:opacity-100 transition-opacity block mt-0.5 truncate"
+                                            >
+                                                {result.url}
+                                            </a>
+                                        </div>
                                     ))}
-                                </ul>
+                                </div>
+                            </details>
+                        )}
+
+                        {/* No Web Results Message */}
+                        {classification.webSearchStatus === "unavailable" && (
+                            <div className="p-1.5 rounded border bg-gray-50 border-gray-200 text-gray-600 dark:bg-gray-800/40 dark:border-gray-600/70 dark:text-gray-400">
+                                <div className="flex items-center gap-1.5">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    <p>Web search unavailable</p>
+                                </div>
                             </div>
                         )}
                     </div>

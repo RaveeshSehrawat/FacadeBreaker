@@ -30,47 +30,26 @@ export const classifyNews = async (text: string) => {
         webEvidences = "Web verification unavailable - using AI analysis only";
     }
 
-    // Step 2: Single AI call with web evidence included
+    // Step 2: AI analysis with web evidence summary
     const hasWebEvidence = webEvidences && !webEvidences.includes("unavailable") && !webEvidences.includes("Failed");
     
-    const prompt = `You are a professional fact-checker with extensive knowledge. Use BOTH your training knowledge AND web evidence to classify this news.
+    const prompt = `You are a professional AI fact-checker with extensive training knowledge. Analyze this news and summarize web evidence.
 
 NEWS TO ANALYZE:
 "${text}"
 
-WEB EVIDENCE (supplementary source):
+WEB SEARCH RESULTS (if available):
 ${webEvidences}
 
-YOUR TASK - Use a BALANCED approach:
-1. First, analyze the claim using YOUR OWN KNOWLEDGE (context, plausibility, known facts, logic)
-2. Then, cross-reference with the web evidence provided
-3. Combine BOTH sources to reach a verdict
-4. If your knowledge and web evidence AGREE: High confidence
-5. If your knowledge and web evidence CONFLICT: State this and use "Uncertain" with explanation
-6. If web evidence is weak but you KNOW the answer: Trust your knowledge, set webEvidenceWeight lower (20-40)
-7. If web evidence is strong and aligns: High webEvidenceWeight (60-85)
-
-CRITICAL INSTRUCTIONS FOR webEvidenceWeight:
-- webEvidenceWeight shows HOW MUCH the web sources influenced your decision (not your confidence)
-- If web sources STRONGLY influenced your verdict: 60-85
-- If web sources MODERATELY influenced your verdict: 30-60
-- If you relied MORE on your own knowledge than web: 10-30
-- If web verification failed/unavailable: 5-15 (you still have your knowledge!)
-- NEVER set to 0 unless absolutely no web data attempted
-
-VERDICT MAPPING:
-- "Verified by Web Sources": Web evidence strongly supports your analysis (webEvidenceWeight > 60)
-- "Partially Verified": Web + your knowledge both contribute (webEvidenceWeight 30-60)
-- "Contradicted by Web Sources": Web clearly disproves the claim (webEvidenceWeight > 50)
-- "Insufficient Web Evidence": Relied mainly on your knowledge (webEvidenceWeight < 30)
+YOUR TASK:
+1. Provide YOUR OWN AI ANALYSIS based on your training knowledge
+2. IF web results are available, provide a SEPARATE SUMMARY of what those web sources say
 
 Provide a JSON response with:
-- label: "Fake", "Real", or "Uncertain" (based on BOTH your knowledge AND web evidence)
-- confidence: number (0-100) - your overall confidence in the verdict
-- reason: detailed explanation (max 5 lines) - explain what YOU know AND what web sources show
-- sources: array of actual URLs from web evidence (empty if none)
-- verdict: one of the 4 options above
-- webEvidenceWeight: number (0-100) showing how much WEB influenced you vs YOUR OWN KNOWLEDGE
+- label: "Fake", "Real", or "Uncertain" (based on YOUR AI knowledge only)
+- confidence: number (0-100) - your confidence in this assessment
+- aiReasoning: brief explanation (max 3 lines) - what YOU know from your training
+- webSourcesSummary: ${hasWebEvidence ? 'brief summary (max 3 lines) of what the web sources indicate about this claim' : '"No web sources available"'}
 
 Respond with ONLY the JSON object, no markdown formatting.`;
 
@@ -89,16 +68,35 @@ Respond with ONLY the JSON object, no markdown formatting.`;
         const responseText = completion.choices[0]?.message?.content || "{}";
         console.log("Response text:", responseText.substring(0, 200));
         
-        let classification;
+        let aiAnalysis;
         
         try {
-            classification = JSON.parse(responseText);
+            aiAnalysis = JSON.parse(responseText);
         } catch (parseError) {
             console.error("Failed to parse classification JSON:", responseText.substring(0, 500));
             throw new Error(`Invalid JSON response from Groq: ${responseText.substring(0, 200)}`);
         }
 
-        return classification;
+        // Parse web search results separately
+        let webSearchResults = [];
+        try {
+            if (hasWebEvidence && webEvidences) {
+                const parsedWeb = JSON.parse(webEvidences);
+                webSearchResults = Array.isArray(parsedWeb) ? parsedWeb : [];
+            }
+        } catch {
+            console.log("Could not parse web evidence as JSON, treating as text");
+        }
+
+        // Return combined but separated results
+        return {
+            label: aiAnalysis.label ?? "Uncertain",
+            confidence: aiAnalysis.confidence ?? 0,
+            aiReasoning: aiAnalysis.aiReasoning ?? "No AI analysis provided",
+            webSourcesSummary: aiAnalysis.webSourcesSummary ?? "No web sources summary available",
+            webSearchResults: webSearchResults,
+            webSearchStatus: hasWebEvidence ? "available" : "unavailable"
+        };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
         console.error("=== Classification Error ===");

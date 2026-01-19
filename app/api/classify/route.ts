@@ -44,7 +44,10 @@ export async function POST(req: Request) {
     return NextResponse.json({
       label: classification.label ?? "Uncertain",
       confidence: classification.confidence ?? 0,
-      reason: classification.reason ?? "No explanation provided",
+      aiReasoning: classification.aiReasoning ?? "No AI analysis provided",
+      webSourcesSummary: classification.webSourcesSummary ?? "No web sources summary available",
+      webSearchResults: classification.webSearchResults ?? [],
+      webSearchStatus: classification.webSearchStatus ?? "unavailable",
     });
 
   } catch (error) {
@@ -58,11 +61,14 @@ export async function POST(req: Request) {
       {
         label: "Uncertain",
         confidence: 0,
-        reason:
+        aiReasoning:
           process.env.NODE_ENV === "development"
             ? errorMessage
             : "Analysis failed. Please try again later.",
+        webSourcesSummary: "No web sources summary available",
         error: "Classification failed",
+        webSearchResults: [],
+        webSearchStatus: "unavailable",
       },
       { status: 500 }
     );
