@@ -20,13 +20,13 @@ const InputBox: React.FC<InputBoxProps> = ({ onSend, loading }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="w-full relative">
-            <div className="relative flex items-center">
+        <form onSubmit={handleSubmit} className="w-full relative animate-fade-in-up">
+            <div className="relative flex items-end gap-2">
                 <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Paste news text or URL here..."
-                    className="w-full p-4 pr-14 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none shadow-sm min-h-[60px] max-h-[120px]"
+                    className="flex-1 p-4 rounded-xl border border-gray-400 dark:border-gray-500 bg-transparent text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none shadow-sm min-h-[60px] max-h-[120px] transition-all duration-200 focus:shadow-glow focus:-translate-y-0.5 backdrop-blur-sm"
                     rows={1}
                     onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
@@ -39,7 +39,7 @@ const InputBox: React.FC<InputBoxProps> = ({ onSend, loading }) => {
                 <button
                     type="submit"
                     disabled={!input.trim() || loading}
-                    className="absolute right-3 p-2 rounded-lg bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700 transition-colors"
+                    className="flex-shrink-0 p-3 rounded-lg bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700 transition-colors glow-button h-[60px] w-[60px] flex items-center justify-center"
                 >
                     {loading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
