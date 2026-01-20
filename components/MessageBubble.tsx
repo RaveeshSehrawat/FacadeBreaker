@@ -51,6 +51,38 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         }
     };
 
+    const getTruthEstimate = (label?: string, confidence?: number) => {
+        if (!label || confidence === undefined) return null;
+        
+        const conf = confidence || 0;
+        
+        switch (label.toLowerCase()) {
+            case "real":
+                return {
+                    text: `${conf}% likely TRUE`,
+                    color: "text-green-600 dark:text-green-400",
+                    bgColor: "bg-green-100/50 dark:bg-green-950/50",
+                    icon: "✓"
+                };
+            case "fake":
+                return {
+                    text: `${conf}% likely FALSE`,
+                    color: "text-red-600 dark:text-red-400",
+                    bgColor: "bg-red-100/50 dark:bg-red-950/50",
+                    icon: "✕"
+                };
+            case "uncertain":
+                return {
+                    text: `${conf}% uncertain`,
+                    color: "text-yellow-600 dark:text-yellow-400",
+                    bgColor: "bg-yellow-100/50 dark:bg-yellow-950/50",
+                    icon: "?"
+                };
+            default:
+                return null;
+        }
+    };
+
     return (
         <div className={`flex w-full mb-4 ${isUser ? "justify-end" : "justify-start"} animate-bubble-pop`}>
             <div
@@ -79,7 +111,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                                     <span className="font-semibold">{classification.confidence}%</span>
                                 </div>
                             </div>
-                            <p className="opacity-90 leading-snug">{classification.aiReasoning}</p>
+                            <p className="opacity-90 leading-snug mb-2">{classification.aiReasoning}</p>
+                            
+                            {/* Truthfulness Estimate */}
+                            {getTruthEstimate(classification.label, classification.confidence) && (
+                                <div className={`${getTruthEstimate(classification.label, classification.confidence)?.bgColor} rounded px-2 py-1.5 mt-2 flex items-center gap-1.5`}>
+                                    <span className={`text-sm font-bold ${getTruthEstimate(classification.label, classification.confidence)?.color}`}>
+                                        {getTruthEstimate(classification.label, classification.confidence)?.icon}
+                                    </span>
+                                    <span className={`text-xs font-semibold ${getTruthEstimate(classification.label, classification.confidence)?.color}`}>
+                                        {getTruthEstimate(classification.label, classification.confidence)?.text}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Web Sources Summary */}

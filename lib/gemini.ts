@@ -1,7 +1,16 @@
 import Groq from "groq-sdk";
 import { searchAndScrapeWeb } from "./webscraper";
 
-export const classifyNews = async (text: string) => {
+export interface ClassificationResult {
+    label: "Fake" | "Real" | "Uncertain";
+    confidence: number;
+    aiReasoning: string;
+    webSourcesSummary: string;
+    webSearchResults: unknown[];
+    webSearchStatus: "available" | "unavailable";
+}
+
+export const classifyNews = async (text: string): Promise<ClassificationResult> => {
     const API_KEY = process.env.GEMINI_API_KEY;
     
     if (!API_KEY) {

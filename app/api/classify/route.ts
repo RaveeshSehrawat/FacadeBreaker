@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { classifyNews } from "@/lib/gemini";
+import { classifyNews, type ClassificationResult } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     const classification = await Promise.race([
       classificationPromise,
       timeoutPromise,
-    ]);
+    ]) as ClassificationResult;
 
     if (!classification || typeof classification !== "object") {
       throw new Error("Invalid classification response from Gemini");
@@ -42,12 +42,12 @@ export async function POST(req: Request) {
     console.log("Classification result:", classification);
 
     return NextResponse.json({
-      label: classification.label ?? "Uncertain",
-      confidence: classification.confidence ?? 0,
-      aiReasoning: classification.aiReasoning ?? "No AI analysis provided",
-      webSourcesSummary: classification.webSourcesSummary ?? "No web sources summary available",
-      webSearchResults: classification.webSearchResults ?? [],
-      webSearchStatus: classification.webSearchStatus ?? "unavailable",
+      label: classification.label,
+      confidence: classification.confidence,
+      aiReasoning: classification.aiReasoning,
+      webSourcesSummary: classification.webSourcesSummary,
+      webSearchResults: classification.webSearchResults,
+      webSearchStatus: classification.webSearchStatus,
     });
 
   } catch (error) {
