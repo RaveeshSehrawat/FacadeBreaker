@@ -1,5 +1,7 @@
 import Groq from "groq-sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { searchAndScrapeWeb } from "./webscraper";
+import { reverseImageSearch } from "./reverseImageSearch";
 
 export interface ClassificationResult {
     label: "Fake" | "Real" | "Uncertain";
@@ -129,6 +131,110 @@ Respond with ONLY the JSON object, no markdown formatting.`;
         }
         
         throw new Error(`Classification failed: ${errorMessage}`);
+    }
+};
+
+export const classifyImage = async (
+    text: string,
+    imageDataUrl: string,
+    fileType: string
+): Promise<ClassificationResult> => {
+    const API_KEY = process.env.GEMINI_API_KEY;
+    
+    if (!API_KEY) {
+        throw new Error("GEMINI_API_KEY environment variable is not set. Please add your Groq API key to .env.local");
+    }
+
+    const groq = new Groq({ apiKey: API_KEY });
+
+    try {
+        // Perform reverse image search
+        console.log("Starting reverse image search...");
+        let reverseSearchInfo = "";
+        let reverseSearchResults: any[] = [];
+        
+        try {
+            const reverseSearch = await Promise.race([
+                reverseImageSearch(imageDataUrl),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error("Reverse image search timeout")), 8000)
+                ),
+            ]) as any;
+            
+            if (reverseSearch.originalSources && reverseSearch.originalSources.length > 0) {
+                reverseSearchInfo = `\n\nREVERSE IMAGE SEARCH RESULTS:\n${reverseSearch.summary}\n`;
+                reverseSearchInfo += `Sources found: ${reverseSearch.originalSources.map((s: any) => `${s.title} (${s.source})`).join(", ")}`;
+                
+                reverseSearchResults = reverseSearch.originalSources.map((s: any) => ({
+                    title: `[Image Source] ${s.title}`,
+                    url: s.url,
+                    snippet: s.snippet || `Found on ${s.source}`,
+                }));
+            } else {
+                reverseSearchInfo = "\n\nREVERSE IMAGE SEARCH: No matching images found online.";
+            }
+            
+            console.log("Reverse image search completed");
+        } catch (error) {
+            console.warn("Reverse image search failed:", error);
+            reverseSearchInfo = "\n\nREVERSE IMAGE SEARCH: Unavailable";
+        }
+
+        const prompt = `You are a professional fact-checker analyzing a visual claim.
+
+USER CLAIM/CONTEXT:
+"${text}"
+
+FILE TYPE: ${fileType}
+An image file was provided for verification.
+
+Analyze the claim and provide:
+1. Assessment of the claim's credibility
+2. Common manipulation indicators for this type of content
+3. What to look for in the image to verify authenticity
+4. Your professional judgment
+
+Return ONLY a valid JSON object with these exact fields:
+{
+    "label": "Fake" or "Real" or "Uncertain",
+    "confidence": number between 0-100,
+    "aiReasoning": "detailed explanation of your analysis",
+    "webSourcesSummary": "guidance on verifying visual content"
+}`;
+
+        const response = await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            max_tokens: 1024,
+            messages: [
+                {
+                    role: "user",
+                    content: prompt,
+                },
+            ],
+        });
+
+        const responseText = response.choices[0]?.message?.content || '';
+        
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error("No JSON response from model");
+        }
+
+        const result = JSON.parse(jsonMatch[0]);
+
+        return {
+            label: result.label || "Uncertain",
+            confidence: result.confidence || 0,
+            aiReasoning: result.aiReasoning || "Visual content analysis completed",
+            webSourcesSummary: result.webSourcesSummary || "Image analysis completed",
+            webSearchResults: reverseSearchResults,
+            webSearchStatus: reverseSearchResults.length > 0 ? "available" : "unavailable",
+        };
+
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        console.error("Image classification failed:", errorMessage);
+        throw error;
     }
 };
 

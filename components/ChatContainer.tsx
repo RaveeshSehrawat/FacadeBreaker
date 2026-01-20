@@ -8,6 +8,12 @@ import MeteorLayer from "./MeteorLayer";
 interface Message {
     role: "user" | "bot";
     content: string;
+    file?: {
+        name: string;
+        type: string;
+        size: number;
+        dataUrl?: string;
+    };
     classification?: {
         label: string;
         confidence: number;
@@ -20,6 +26,23 @@ interface Message {
             scrapedContent?: string | null;
         }>;
         webSearchStatus?: string;
+    };
+    authenticity?: {
+        isAuthentic: boolean;
+        confidence: number;
+        reasoning: string;
+        indicators: {
+            aiGeneration: {
+                detected: boolean;
+                confidence: number;
+                evidence: string[];
+            };
+            manipulation: {
+                detected: boolean;
+                confidence: number;
+                evidence: string[];
+            };
+        };
     };
 }
 
@@ -43,17 +66,69 @@ const ChatContainer: React.FC = () => {
         scrollToBottom();
     }, [messages]);
 
-    const handleSend = async (text: string) => {
+    const handleSend = async (text: string, file?: File) => {
         // Add user message
-        const newMessage: Message = { role: "user", content: text };
+        let fileData = undefined;
+        if (file) {
+            const dataUrl = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target?.result as string);
+                reader.readAsDataURL(file);
+            });
+            fileData = {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                dataUrl,
+            };
+        }
+
+        const newMessage: Message = { 
+            role: "user", 
+            content: text || `Analyzing ${file?.type.startsWith('image') ? 'image' : 'video'}: ${file?.name}`,
+            file: fileData,
+        };
         setMessages((prev) => [...prev, newMessage]);
         setLoading(true);
 
         try {
+            // If image is uploaded, check authenticity first
+            let authenticityResult = undefined;
+            if (file && file.type.startsWith('image/') && fileData?.dataUrl) {
+                try {
+                    const authResponse = await fetch("/api/check-authenticity", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ imageDataUrl: fileData.dataUrl }),
+                    });
+
+                    if (authResponse.ok) {
+                        const authData = await authResponse.json();
+                        authenticityResult = authData.data;
+                        
+                        // Add authenticity check result message
+                        const authMessage = authenticityResult.isAuthentic
+                            ? `✓ Photo appears authentic (${authenticityResult.confidence}% confidence)`
+                            : `⚠️ Photo may be ${authenticityResult.indicators.aiGeneration.detected ? 'AI-generated' : 'manipulated'} (${authenticityResult.confidence}% confidence)`;
+                        
+                        setMessages((prev) => [
+                            ...prev,
+                            {
+                                role: "bot",
+                                content: authMessage,
+                                authenticity: authenticityResult,
+                            },
+                        ]);
+                    }
+                } catch (authError) {
+                    console.error("Authenticity check failed:", authError);
+                }
+            }
+
             const response = await fetch("/api/classify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text }),
+                body: JSON.stringify({ text: text || newMessage.content, file: fileData }),
             });
 
             const data = await response.json();
@@ -103,6 +178,7 @@ const ChatContainer: React.FC = () => {
                         key={idx}
                         role={msg.role}
                         content={msg.content}
+                        file={msg.file}
                         classification={msg.classification}
                     />
                 ))}

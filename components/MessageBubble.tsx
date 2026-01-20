@@ -3,6 +3,12 @@ import React from "react";
 interface MessageBubbleProps {
     role: "user" | "bot";
     content: string;
+    file?: {
+        name: string;
+        type: string;
+        size: number;
+        dataUrl?: string;
+    };
     classification?: {
         label: string;
         confidence: number;
@@ -16,12 +22,31 @@ interface MessageBubbleProps {
         }>;
         webSearchStatus?: string;
     };
+    authenticity?: {
+        isAuthentic: boolean;
+        confidence: number;
+        reasoning: string;
+        indicators: {
+            aiGeneration: {
+                detected: boolean;
+                confidence: number;
+                evidence: string[];
+            };
+            manipulation: {
+                detected: boolean;
+                confidence: number;
+                evidence: string[];
+            };
+        };
+    };
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
     role,
     content,
+    file,
     classification,
+    authenticity,
 }) => {
     const isUser = role === "user";
 
@@ -92,6 +117,17 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     } hover:-translate-y-0.5`}
             >
                 <p className="whitespace-pre-wrap leading-relaxed">{content}</p>
+
+                {file && file.dataUrl && (
+                    <div className="mt-3 rounded-lg overflow-hidden">
+                        <img
+                            src={file.dataUrl}
+                            alt={file.name}
+                            className="max-w-full max-h-96 rounded-lg border border-gray-300 dark:border-gray-600"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{file.name}</p>
+                    </div>
+                )}
 
                 {classification && (
                     <div className="mt-2 space-y-2 text-xs">
@@ -183,6 +219,68 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                                     </svg>
                                     <p>Web search unavailable</p>
                                 </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Photo Authenticity Results */}
+                {authenticity && (
+                    <div className="mt-2 space-y-2 text-xs">
+                        {/* Main Authenticity Status */}
+                        <div className={`p-2 rounded border ${
+                            authenticity.isAuthentic 
+                                ? 'bg-green-50 border-green-200 text-green-900 dark:bg-green-950/40 dark:border-green-700/70 dark:text-green-200'
+                                : 'bg-red-50 border-red-200 text-red-900 dark:bg-red-950/40 dark:border-red-700/70 dark:text-red-200'
+                        }`}>
+                            <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-1.5">
+                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="font-semibold">Photo Authenticity Check</span>
+                                </div>
+                                <span className="font-semibold">{authenticity.confidence}%</span>
+                            </div>
+                            <p className="opacity-90 leading-snug">{authenticity.reasoning}</p>
+                        </div>
+
+                        {/* AI Generation Detection */}
+                        {authenticity.indicators.aiGeneration.detected && (
+                            <div className="p-2 rounded border bg-orange-50 border-orange-200 text-orange-900 dark:bg-orange-950/40 dark:border-orange-700/70 dark:text-orange-200">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="font-semibold">⚠️ AI Generation Detected ({authenticity.indicators.aiGeneration.confidence}%)</span>
+                                </div>
+                                {authenticity.indicators.aiGeneration.evidence.length > 0 && (
+                                    <ul className="list-disc list-inside opacity-90 leading-snug space-y-0.5">
+                                        {authenticity.indicators.aiGeneration.evidence.map((evidence, idx) => (
+                                            <li key={idx} className="text-[10px]">{evidence}</li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Manipulation Detection */}
+                        {authenticity.indicators.manipulation.detected && (
+                            <div className="p-2 rounded border bg-purple-50 border-purple-200 text-purple-900 dark:bg-purple-950/40 dark:border-purple-700/70 dark:text-purple-200">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="font-semibold">⚠️ Manipulation Detected ({authenticity.indicators.manipulation.confidence}%)</span>
+                                </div>
+                                {authenticity.indicators.manipulation.evidence.length > 0 && (
+                                    <ul className="list-disc list-inside opacity-90 leading-snug space-y-0.5">
+                                        {authenticity.indicators.manipulation.evidence.map((evidence, idx) => (
+                                            <li key={idx} className="text-[10px]">{evidence}</li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
                         )}
                     </div>

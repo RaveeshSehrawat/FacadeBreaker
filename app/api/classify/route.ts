@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { classifyNews, type ClassificationResult } from "@/lib/gemini";
+import { classifyNews, classifyImage, type ClassificationResult } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +10,9 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const text = body?.text;
+    const file = body?.file;
 
+    // Validate input
     if (!text || typeof text !== "string" || text.trim().length < 10) {
       return NextResponse.json(
         {
@@ -21,6 +23,10 @@ export async function POST(req: Request) {
     }
 
     console.log("Text received:", text.substring(0, 120));
+    
+    if (file && file.dataUrl) {
+      console.log(`File received: ${file.name} (${file.type})`);
+    }
 
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("Classification timeout after 30 seconds")), 30000)
@@ -28,7 +34,14 @@ export async function POST(req: Request) {
 
     console.log("Starting classification...");
 
-    const classificationPromise = classifyNews(text.trim());
+    let classificationPromise;
+    
+    // If image/video file is provided, use vision analysis
+    if (file && file.dataUrl && (file.type.startsWith('image') || file.type.startsWith('video'))) {
+      classificationPromise = classifyImage(text.trim(), file.dataUrl, file.type);
+    } else {
+      classificationPromise = classifyNews(text.trim());
+    }
 
     const classification = await Promise.race([
       classificationPromise,
