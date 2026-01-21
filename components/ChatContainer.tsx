@@ -50,7 +50,7 @@ const ChatContainer: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([
         {
             role: "bot",
-            content: "Hello! I'm TruthLens. Paste any news article or headline, and I'll help you verify its authenticity.",
+            content: "Hello! I'm FacadeBreaker. Paste any news article or headline, and I'll help you verify its authenticity.",
         },
     ]);
     const [loading, setLoading] = useState(false);

@@ -27,7 +27,7 @@ export default function Home() {
             <div className="relative z-20 w-full flex items-center justify-between px-4 md:px-8 py-4 flex-shrink-0 border-b border-gray-200 dark:border-gray-700/40">
                 <div className="flex items-center gap-3">
                     <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-300 dark:to-indigo-200">
-                        TruthLens AI
+                        FacadeBreaker
                     </h1>
                     <span className="px-3 py-1 text-xs rounded-full bg-blue-600/10 text-blue-700 dark:bg-blue-500/15 dark:text-blue-100 border border-blue-200/40 dark:border-blue-400/30">
                         Gemini
