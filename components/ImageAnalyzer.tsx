@@ -99,42 +99,24 @@ const ImageAnalyzer: React.FC = () => {
         setLoading(true);
 
         try {
-            // Check authenticity first
-            let authenticityResult = undefined;
-            try {
-                const authResponse = await fetch("/api/check-authenticity", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ imageUrl: imagePreview }),
-                });
-                if (authResponse.ok) {
-                    authenticityResult = await authResponse.json();
-                }
-            } catch (authError) {
-                console.warn("Authenticity check failed:", authError);
-            }
-
-            // Classify the image
-            const classifyResponse = await fetch("/api/classify", {
+            // Use Python analysis for deepfake/AI detection
+            const authResponse = await fetch("/api/analyze-image", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    text: `Please analyze this image for authenticity and provide detailed analysis.`,
-                    file: fileData,
-                }),
+                body: JSON.stringify({ imageDataUrl: imagePreview }),
             });
 
-            if (!classifyResponse.ok) {
-                const errorData = await classifyResponse.json();
-                throw new Error(errorData.error || "Classification failed");
+            if (!authResponse.ok) {
+                const errorData = await authResponse.json();
+                throw new Error(errorData.error || "Analysis failed");
             }
 
-            const classificationResult = await classifyResponse.json();
+            const result = await authResponse.json();
+            const authenticityResult = result.data;
 
             const botMessage: ImageMessage = {
                 role: "bot",
-                content: "Image analysis complete",
-                classification: classificationResult,
+                content: authenticityResult.reasoning,
                 authenticity: authenticityResult,
             };
 
