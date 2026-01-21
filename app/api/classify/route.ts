@@ -36,12 +36,9 @@ export async function POST(req: Request) {
 
     let classificationPromise;
     
-    // If image/video file is provided, use vision analysis
-    if (file && file.dataUrl && (file.type.startsWith('image') || file.type.startsWith('video'))) {
-      classificationPromise = classifyImage(text.trim(), file.dataUrl, file.type);
-    } else {
-      classificationPromise = classifyNews(text.trim());
-    }
+    // Always use text-based classification for fact-checking
+    // Even if an image is provided, the OCR text has already been extracted
+    classificationPromise = classifyNews(text.trim());
 
     const classification = await Promise.race([
       classificationPromise,

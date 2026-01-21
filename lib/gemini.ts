@@ -26,6 +26,7 @@ export const classifyNews = async (text: string): Promise<ClassificationResult> 
     try {
         const searchQuery = extractMainClaim(text);
         if (searchQuery) {
+            console.log("Extracted search query:", searchQuery);
             console.log("Starting web scraping for:", searchQuery);
             webEvidences = await Promise.race([
                 searchAndScrapeWeb(searchQuery),
@@ -33,7 +34,9 @@ export const classifyNews = async (text: string): Promise<ClassificationResult> 
                     setTimeout(() => reject(new Error("Web search timeout after 8 seconds")), 8000)
                 ),
             ]);
-            console.log("Web scraping completed");
+            console.log("Web scraping completed, length:", webEvidences.length);
+        } else {
+            console.warn("No search query could be extracted from text");
         }
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown error";
@@ -42,27 +45,33 @@ export const classifyNews = async (text: string): Promise<ClassificationResult> 
     }
 
     // Step 2: AI analysis with web evidence summary
-    const hasWebEvidence = webEvidences && !webEvidences.includes("unavailable") && !webEvidences.includes("Failed");
+    const hasWebEvidence = webEvidences && !webEvidences.includes("unavailable") && !webEvidences.includes("Failed") && !webEvidences.includes("No relevant");
     
-    const prompt = `You are a professional AI fact-checker with extensive training knowledge. Analyze this news and summarize web evidence.
+    console.log("Web evidence available:", hasWebEvidence);
+    console.log("Web evidence preview:", webEvidences.substring(0, 300));
+    
+    const prompt = `You are a professional AI fact-checker. Analyze this news claim and summarize the web search results.
 
 NEWS TO ANALYZE:
 "${text}"
 
-WEB SEARCH RESULTS (if available):
+${hasWebEvidence ? `WEB SEARCH RESULTS:
 ${webEvidences}
 
+IMPORTANT: The above contains real search results from the web. Summarize what these specific sources say about the claim.` : `WEB SEARCH: No results available`}
+
 YOUR TASK:
-1. Provide YOUR OWN AI ANALYSIS based on your training knowledge
-2. IF web results are available, provide a SEPARATE SUMMARY of what those web sources say
+1. Classify the claim as "Fake", "Real", or "Uncertain" based on your knowledge
+2. Provide your AI reasoning (max 3 lines)
+3. ${hasWebEvidence ? 'Summarize what the WEB SEARCH RESULTS above say about this specific claim (max 3 lines). Quote specific findings from the sources.' : 'State that no web sources were available'}
 
-Provide a JSON response with:
-- label: "Fake", "Real", or "Uncertain" (based on YOUR AI knowledge only)
-- confidence: number (0-100) - your confidence in this assessment
-- aiReasoning: brief explanation (max 3 lines) - what YOU know from your training
-- webSourcesSummary: ${hasWebEvidence ? 'brief summary (max 3 lines) of what the web sources indicate about this claim' : '"No web sources available"'}
-
-Respond with ONLY the JSON object, no markdown formatting.`;
+Respond with ONLY a JSON object:
+{
+  "label": "Fake" | "Real" | "Uncertain",
+  "confidence": 0-100,
+  "aiReasoning": "your analysis",
+  "webSourcesSummary": "${hasWebEvidence ? 'summary of what the search results found' : 'No web sources available'}"
+}`;
 
     try {
         console.log("Calling Groq for classification...");
@@ -245,7 +254,19 @@ const extractMainClaim = (text: string): string => {
         .replace(/according to|reported by|claimed that|said that/gi, "")
         .trim();
     
-    // Return first 100 characters or until first period
-    const claim = cleaned.split(".")[0];
-    return claim.substring(0, 100);
+    // For OCR text, try to get more meaningful content
+    // Split by periods and take first 2-3 sentences that have substance
+    const sentences = cleaned.split(/[.!?]+/).filter(s => s.trim().length > 20);
+    
+    if (sentences.length === 0) {
+        return cleaned.substring(0, 150);
+    }
+    
+    // Return first meaningful sentences up to 150 characters
+    let claim = sentences[0];
+    if (sentences.length > 1 && claim.length < 100) {
+        claim += ". " + sentences[1];
+    }
+    
+    return claim.substring(0, 150).trim();
 };

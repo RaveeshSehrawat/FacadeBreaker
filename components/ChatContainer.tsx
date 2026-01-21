@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import MessageBubble from "./MessageBubble";
 import InputBox from "./InputBox";
-import MeteorLayer from "./MeteorLayer";
+import { extractTextFromImage } from "@/lib/ocr";
 
 interface Message {
     role: "user" | "bot";
@@ -69,6 +69,8 @@ const ChatContainer: React.FC = () => {
     const handleSend = async (text: string, file?: File) => {
         // Add user message
         let fileData = undefined;
+        let processedText = text;
+
         if (file) {
             const dataUrl = await new Promise<string>((resolve) => {
                 const reader = new FileReader();
@@ -81,54 +83,44 @@ const ChatContainer: React.FC = () => {
                 size: file.size,
                 dataUrl,
             };
+
+            // If image file, extract text using OCR (silently fail if not working)
+            if (file.type.startsWith('image/')) {
+                try {
+                    processedText = await extractTextFromImage(dataUrl);
+                    console.log("OCR extracted text:", processedText);
+                    if (!processedText || processedText.trim().length === 0) {
+                        console.warn("OCR returned empty text");
+                    }
+                } catch (ocrError) {
+                    console.warn("OCR extraction failed, continuing without text extraction:", ocrError);
+                    // Continue without OCR text - user can paste manually if needed
+                }
+            }
         }
 
         const newMessage: Message = { 
             role: "user", 
-            content: text || `Analyzing ${file?.type.startsWith('image') ? 'image' : 'video'}: ${file?.name}`,
+            content: file ? `[Image: ${file.name}]` : text,
             file: fileData,
         };
         setMessages((prev) => [...prev, newMessage]);
         setLoading(true);
 
         try {
-            // If image is uploaded, check authenticity first
-            let authenticityResult = undefined;
-            if (file && file.type.startsWith('image/') && fileData?.dataUrl) {
-                try {
-                    const authResponse = await fetch("/api/check-authenticity", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ imageDataUrl: fileData.dataUrl }),
-                    });
-
-                    if (authResponse.ok) {
-                        const authData = await authResponse.json();
-                        authenticityResult = authData.data;
-                        
-                        // Add authenticity check result message
-                        const authMessage = authenticityResult.isAuthentic
-                            ? `✓ Photo appears authentic (${authenticityResult.confidence}% confidence)`
-                            : `⚠️ Photo may be ${authenticityResult.indicators.aiGeneration.detected ? 'AI-generated' : 'manipulated'} (${authenticityResult.confidence}% confidence)`;
-                        
-                        setMessages((prev) => [
-                            ...prev,
-                            {
-                                role: "bot",
-                                content: authMessage,
-                                authenticity: authenticityResult,
-                            },
-                        ]);
-                    }
-                } catch (authError) {
-                    console.error("Authenticity check failed:", authError);
-                }
-            }
+            // Use the OCR extracted text or the user provided text for classification
+            const textToAnalyze = processedText || text;
+            
+            console.log("Sending to classify API:", {
+                textLength: textToAnalyze?.length,
+                hasFile: !!file,
+                text: textToAnalyze?.substring(0, 100)
+            });
 
             const response = await fetch("/api/classify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: text || newMessage.content, file: fileData }),
+                body: JSON.stringify({ text: textToAnalyze, file: fileData }),
             });
 
             const data = await response.json();
@@ -168,7 +160,6 @@ const ChatContainer: React.FC = () => {
 
     return (
         <div className="relative isolate flex flex-col w-full flex-1 rounded-2xl border border-gray-100/40 dark:border-gray-700/40 overflow-hidden glass-panel glass-panel-dark animate-fade-in-up">
-            <MeteorLayer count={16} className="opacity-90" />
             <div
                 ref={messagesContainerRef}
                 className="relative z-10 flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-gray-950 min-h-0"

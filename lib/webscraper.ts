@@ -8,6 +8,9 @@ interface SearchResult {
 }
 
 export const searchAndScrapeWeb = async (query: string): Promise<string> => {
+    console.log("=== WEB SEARCH START ===");
+    console.log("Search query:", query);
+    
     try {
         // Wrap in a timeout to prevent hanging
         const timeoutPromise = new Promise<string>((_, reject) =>
@@ -19,9 +22,14 @@ export const searchAndScrapeWeb = async (query: string): Promise<string> => {
             // For demo, we'll use DuckDuckGo which doesn't require authentication
             const searchResults = await searchWeb(query);
             
+            console.log("Search results count:", searchResults.length);
+            
             if (searchResults.length === 0) {
+                console.warn("No search results found for query:", query);
                 return "No relevant search results found.";
             }
+
+            console.log("First result:", searchResults[0].title);
 
             // Scrape the top 3 results for more detailed information
             const scrapedData = await Promise.all(
@@ -45,7 +53,9 @@ export const searchAndScrapeWeb = async (query: string): Promise<string> => {
                 })
             );
 
-            return JSON.stringify(scrapedData, null, 2);
+            const resultString = JSON.stringify(scrapedData, null, 2);
+            console.log("Returning search results, length:", resultString.length);
+            return resultString;
         })();
 
         return Promise.race([searchPromise, timeoutPromise]);

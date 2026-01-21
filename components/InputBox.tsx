@@ -39,7 +39,7 @@ const InputBox: React.FC<InputBoxProps> = ({ onSend, loading }) => {
             {selectedFile && (
                 <div className="mb-2 p-2 bg-blue-100 dark:bg-blue-950/40 rounded-lg flex items-center justify-between border border-blue-300 dark:border-blue-700">
                     <span className="text-sm text-blue-900 dark:text-blue-200">
-                        📎 🖼️ {selectedFile.name}
+                        📎 🖼️ {selectedFile.name} {selectedFile.type.startsWith('image') ? '(will extract text via OCR)' : ''}
                     </span>
                     <button
                         type="button"
@@ -55,7 +55,7 @@ const InputBox: React.FC<InputBoxProps> = ({ onSend, loading }) => {
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Paste news text, URL, or upload an image to verify..."
+                        placeholder="Paste news text, URL, or upload an image to extract and verify text..."
                         className="flex-1 p-4 rounded-xl border border-gray-400 dark:border-gray-500 bg-transparent text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none shadow-sm min-h-[60px] max-h-[120px] transition-all duration-200 focus:shadow-glow focus:-translate-y-0.5 backdrop-blur-sm"
                         rows={1}
                         onKeyDown={(e) => {
