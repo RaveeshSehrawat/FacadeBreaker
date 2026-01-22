@@ -52,9 +52,6 @@ npm install
 Create a `.env.local` file in the root directory with the following:
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here (optional)
-ANTHROPIC_API_KEY=your_anthropic_api_key_here (optional)
-GROQ_API_KEY=your_groq_api_key_here (optional)
 ```
 
 4. Run the development server:
@@ -109,10 +106,6 @@ npm run dev
 To use FacadeBreaker, you'll need API keys from one or more of these providers:
 
 - **Google Gemini** (Recommended): [Get API Key](https://makersuite.google.com/app/apikey)
-- **OpenAI** (Optional): [Get API Key](https://platform.openai.com/api-keys)
-- **Anthropic Claude** (Optional): [Get API Key](https://console.anthropic.com/)
-- **Groq** (Optional): [Get API Key](https://console.groq.com/)
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
